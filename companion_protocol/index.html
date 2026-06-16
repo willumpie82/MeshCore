@@ -1885,7 +1885,7 @@
 <p><strong>Send Initial Commands</strong></p>
 <ul>
 <li>Send <code>CMD_APP_START</code> to identify your app to firmware and get radio settings</li>
-<li>Send <code>CMD_DEVICE_QEURY</code> to fetch device info and negotiate supported protocol versions</li>
+<li>Send <code>CMD_DEVICE_QUERY</code> to fetch device info and negotiate supported protocol versions</li>
 <li>Send <code>CMD_SET_DEVICE_TIME</code> to set the firmware clock</li>
 <li>Send <code>CMD_GET_CONTACTS</code> to fetch all contacts</li>
 <li>Send <code>CMD_GET_CHANNEL</code> multiple times to fetch all channel slots</li>
@@ -2814,7 +2814,7 @@ response = wait_for_response(PACKET_MSG_SENT)
 </li>
 <li>Send <code>CMD_SYNC_NEXT_MESSAGE</code> when <code>PUSH_CODE_MSG_WAITING</code> is received</li>
 <li>
-<p>Implement message deduplication to avoid display the same message twice</p>
+<p>Implement message deduplication to avoid displaying the same message twice</p>
 </li>
 <li>
 <p><strong>Channel Management</strong>:</p>
