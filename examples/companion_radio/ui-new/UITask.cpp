@@ -2,7 +2,7 @@
 #include <helpers/TxtDataHelpers.h>
 #include "../MyMesh.h"
 #include "target.h"
-#ifdef WIFI_SSID
+#if defined(WIFI_SSID) || defined(IMPROV_WIFI_SERIAL)
   #include <WiFi.h>
 #endif
 
@@ -225,7 +225,7 @@ public:
       sprintf(tmp, "MSG: %d", _task->getMsgCount());
       display.drawTextCentered(display.width() / 2, 22, tmp);
 
-      #ifdef WIFI_SSID
+      #if defined(WIFI_SSID) || defined(IMPROV_WIFI_SERIAL)
         IPAddress ip = WiFi.localIP();
         snprintf(tmp, sizeof(tmp), "IP: %d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
         display.setTextSize(1);

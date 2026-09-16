@@ -32,7 +32,7 @@ MultiSerialInterface interface_manager;
 #endif
 
 // include wifi interface
-#ifdef WIFI_SSID
+#if defined(WIFI_SSID) || defined(IMPROV_WIFI_SERIAL)
   #ifndef TCP_PORT
     #define TCP_PORT 5000
   #endif
@@ -43,6 +43,14 @@ MultiSerialInterface interface_manager;
   #else
     #error "SerialWifiInterface is not defined for this platform"
   #endif
+#endif
+
+// Improv Wi-Fi serial provisioning (POC): lets a generic binary be provisioned
+// with WiFi credentials at runtime instead of baking them in at build time.
+// See: https://www.improv-wifi.com/serial/
+#if defined(IMPROV_WIFI_SERIAL)
+  #include <helpers/esp32/ImprovWiFiSerial.h>
+  ImprovWiFiSerial improv_wifi;
 #endif
 
 // include usb interface
@@ -108,7 +116,7 @@ void halt() {
 }
 
 /* WIFI RECONNECT TRACKERS */
-#if defined(ESP32) && defined(WIFI_SSID)
+#if defined(ESP32) && (defined(WIFI_SSID) || defined(IMPROV_WIFI_SERIAL))
   bool wifi_needs_reconnect = false;
   unsigned long last_wifi_reconnect_attempt = 0;
 #endif
@@ -190,8 +198,30 @@ void setup() {
   interface_manager.addInterface(InterfaceType::Bluetooth, &bluetooth_interface);
 #endif
 
+// Improv Wi-Fi provisioning (POC). Must run *before* usb_serial_interface claims
+// Serial below, since both would otherwise race to read the same byte stream.
+// Blocks (showing a prompt on-screen, if present) until either previously-stored
+// credentials reconnect, or a host provisions fresh ones over serial.
+#if defined(IMPROV_WIFI_SERIAL)
+  improv_wifi.begin(Serial, "MeshCore", FIRMWARE_VERSION, the_mesh.getNodePrefs()->node_name);
+  if (!improv_wifi.loadStoredCredsAndConnect()) {
+  #ifdef DISPLAY_CLASS
+    if (disp) {
+      disp->startFrame();
+      disp->setTextSize(1);
+      disp->drawTextCentered(disp->width() / 2, disp->height() / 2, "Improv WiFi: waiting for setup...");
+      disp->endFrame();
+    }
+  #endif
+    while (!improv_wifi.isConnected()) {
+      improv_wifi.loop();
+      delay(10);   // yield, so we don't trip the task watchdog while waiting
+    }
+  }
+#endif
+
 // add wifi interface
-#ifdef WIFI_SSID
+#if defined(WIFI_SSID) || defined(IMPROV_WIFI_SERIAL)
   board.setInhibitSleep(true);   // prevent sleep when WiFi is active
   WiFi.setAutoReconnect(true);
 
@@ -205,7 +235,9 @@ void setup() {
       }
   });
 
-  WiFi.begin(WIFI_SSID, WIFI_PWD);
+  #ifdef WIFI_SSID
+    WiFi.begin(WIFI_SSID, WIFI_PWD);
+  #endif
   wifi_interface.begin(TCP_PORT);
   interface_manager.addInterface(InterfaceType::WiFi, &wifi_interface);
 #endif
@@ -262,7 +294,7 @@ void loop() {
 #endif
   }
 
-#if defined(ESP32) && defined(WIFI_SSID)
+#if defined(ESP32) && (defined(WIFI_SSID) || defined(IMPROV_WIFI_SERIAL))
   // Safely attempt to reconnect every 10 seconds if flagged
   if (wifi_needs_reconnect && (millis() - last_wifi_reconnect_attempt > 10000)) {
     WIFI_DEBUG_PRINTLN("Attempting manual WiFi reconnect...");
